@@ -48,24 +48,19 @@ let confrontos = [
 ];
 
 let palpites = [
-  { id: 1, usuarioId: 1, confrontoId: 2, golsTimeA: 3, golsTimeB: 2, pontos: 3, createdAt: new Date() },
-  { id: 2, usuarioId: 2, confrontoId: 2, golsTimeA: 2, golsTimeB: 3, pontos: 0, createdAt: new Date() }
+  { id: 1, usuarioId: 1, confrontoId: 2, golsTimeA: 3, golsTimeB: 2, pontos: 3, createdAt: new Date() }
 ];
 
 let proximoId = { usuario: 3, confronto: 3, palpite: 3 };
 
-// Função de pontuação
 function calcularPontos(palpiteA, palpiteB, realA, realB) {
   if (palpiteA === realA && palpiteB === realB) return 3;
-  
   const palpiteResultado = palpiteA > palpiteB ? 'VITORIA_A' : palpiteA < palpiteB ? 'VITORIA_B' : 'EMPATE';
   const realResultado = realA > realB ? 'VITORIA_A' : realA < realB ? 'VITORIA_B' : 'EMPATE';
-  
   if (palpiteResultado === realResultado) return 1;
   return 0;
 }
 
-// Atualizar pontos
 function atualizarPontosConfronto(confrontoId, realA, realB) {
   palpites.forEach(p => {
     if (p.confrontoId === confrontoId) {
@@ -74,7 +69,7 @@ function atualizarPontosConfronto(confrontoId, realA, realB) {
   });
 }
 
-// ROTAS
+// ROTAS DE AUTENTICAÇÃO
 app.post('/api/login', (req, res) => {
   const { email, senha } = req.body;
   const usuario = usuarios.find(u => u.email === email && u.senha === senha && u.ativo !== false);
@@ -90,7 +85,6 @@ app.post('/api/cadastro', (req, res) => {
   if (usuarios.find(u => u.email === email)) {
     return res.status(400).json({ success: false, message: 'Email já cadastrado' });
   }
-  
   usuarios.push({
     id: proximoId.usuario++,
     nome, email, senha, role: 'USER', ativo: true,
@@ -99,7 +93,7 @@ app.post('/api/cadastro', (req, res) => {
   res.json({ success: true });
 });
 
-// Admin - Usuários
+// ADMIN - USUÁRIOS
 app.get('/api/admin/usuarios', (req, res) => {
   res.json(usuarios.map(u => ({ ...u, senha: undefined })));
 });
@@ -129,7 +123,7 @@ app.delete('/api/admin/usuarios/:id', (req, res) => {
   }
 });
 
-// Confrontos
+// CONFRONTOS
 app.get('/api/confrontos', (req, res) => res.json(confrontos));
 
 app.post('/api/admin/confrontos', (req, res) => {
@@ -158,7 +152,6 @@ app.put('/api/admin/confrontos/:id', (req, res) => {
   }
 });
 
-// Definir resultado (permite edição mesmo após encerrado)
 app.put('/api/admin/confrontos/:id/resultado', (req, res) => {
   const c = confrontos.find(c => c.id == req.params.id);
   if (c) {
@@ -175,8 +168,11 @@ app.put('/api/admin/confrontos/:id/resultado', (req, res) => {
 });
 
 app.delete('/api/admin/confrontos/:id', (req, res) => {
-  const index = confrontos.findIndex(c => c.id == req.params.id);
+  const id = parseInt(req.params.id);
+  const index = confrontos.findIndex(c => c.id === id);
   if (index !== -1) {
+    // Remover todos os palpites associados a este confronto
+    palpites = palpites.filter(p => p.confrontoId !== id);
     confrontos.splice(index, 1);
     res.json({ success: true });
   } else {
@@ -184,11 +180,10 @@ app.delete('/api/admin/confrontos/:id', (req, res) => {
   }
 });
 
-// Palpites
+// PALPITES
 app.post('/api/palpites', (req, res) => {
   const { usuarioId, confrontoId, golsTimeA, golsTimeB } = req.body;
   const confronto = confrontos.find(c => c.id == confrontoId);
-  
   if (!confronto || confronto.status === 'ENCERRADO') {
     return res.status(400).json({ success: false, message: 'Confronto encerrado' });
   }
@@ -198,12 +193,10 @@ app.post('/api/palpites', (req, res) => {
   if (palpites.find(p => p.usuarioId === usuarioId && p.confrontoId === confrontoId)) {
     return res.status(400).json({ success: false, message: 'Você já palpou' });
   }
-  
   let pontos = 0;
   if (confronto.golsTimeA !== null && confronto.golsTimeB !== null) {
     pontos = calcularPontos(golsTimeA, golsTimeB, confronto.golsTimeA, confronto.golsTimeB);
   }
-  
   palpites.push({
     id: proximoId.palpite++,
     usuarioId, confrontoId, golsTimeA, golsTimeB, pontos, createdAt: new Date()
@@ -214,24 +207,18 @@ app.post('/api/palpites', (req, res) => {
 app.get('/api/palpites/:confrontoId', (req, res) => {
   const result = palpites.filter(p => p.confrontoId == req.params.confrontoId).map(p => {
     const usuario = usuarios.find(u => u.id === p.usuarioId);
-    return {
-      ...p,
-      usuarioNome: usuario?.nome,
-      chavePix: usuario?.chavePix,
-      tipoChavePix: usuario?.tipoChavePix
-    };
+    return { ...p, usuarioNome: usuario?.nome, chavePix: usuario?.chavePix, tipoChavePix: usuario?.tipoChavePix };
   });
   res.json(result);
 });
 
-// Ranking
+// RANKING
 app.get('/api/ranking', (req, res) => {
   const pontosPorUsuario = {};
   palpites.forEach(p => {
     if (!pontosPorUsuario[p.usuarioId]) pontosPorUsuario[p.usuarioId] = 0;
     pontosPorUsuario[p.usuarioId] += p.pontos;
   });
-  
   const ranking = Object.keys(pontosPorUsuario).map(uid => {
     const u = usuarios.find(u => u.id == uid);
     return {
@@ -242,7 +229,6 @@ app.get('/api/ranking', (req, res) => {
       pontosResultado: palpites.filter(p => p.usuarioId == uid && p.pontos === 1).length
     };
   }).sort((a, b) => b.pontos - a.pontos);
-  
   res.json(ranking);
 });
 
