@@ -10,14 +10,13 @@ services:
       - key: PORT
         value: 3333
 
-  - type: web
+  - type: static
     name: palpite-copa-frontend
-    runtime: static
     rootDir: frontend
     buildCommand: ""
     staticPublishPath: .
     plan: free
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
