@@ -88,6 +88,45 @@ app.get('/api/ranking', async (req, res) => {
 async function start() {
   await criarTabelas();
   const PORT = process.env.PORT || 3333;
+  // Rota de cadastro
+app.post('/api/cadastro', async (req, res) => {
+  const { nome, email, senha, telefone, tipoChavePix, chavePix } = req.body;
+  try {
+    const usuario = await prisma.usuario.create({
+      data: {
+        nome,
+        email,
+        senha,
+        cpf: '000.000.000-00',
+        telefone,
+        tipoChavePix,
+        chavePix,
+        role: 'USER',
+        ativo: true
+      }
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Rota de login
+app.post('/api/login', async (req, res) => {
+  const { email, senha } = req.body;
+  try {
+    const usuario = await prisma.usuario.findFirst({
+      where: { email, senha, ativo: true }
+    });
+    if (usuario) {
+      res.json({ success: true, usuario: { id: usuario.id, nome: usuario.nome, role: usuario.role } });
+    } else {
+      res.status(401).json({ success: false });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});  
   app.listen(PORT, () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
   });
