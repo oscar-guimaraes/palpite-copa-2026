@@ -227,26 +227,29 @@ app.get('/api/palpites/:confrontoId', (req, res) => {
 // Ranking
 app.get('/api/ranking', (req, res) => {
   const pontosPorUsuario = {};
+  
+  // Só conta usuários que têm palpites
   palpites.forEach(p => {
-    if (!pontosPorUsuario[p.usuarioId]) pontosPorUsuario[p.usuarioId] = 0;
+    if (!pontosPorUsuario[p.usuarioId]) {
+      pontosPorUsuario[p.usuarioId] = 0;
+    }
     pontosPorUsuario[p.usuarioId] += p.pontos;
   });
   
+  // Converte para array e filtra quem tem pontos > 0 OU tem palpites
   const ranking = Object.keys(pontosPorUsuario).map(uid => {
     const u = usuarios.find(u => u.id == uid);
+    const palpitesDoUsuario = palpites.filter(p => p.usuarioId == uid);
     return {
       id: uid,
       nome: u?.nome || 'Usuário',
       pontos: pontosPorUsuario[uid],
-      pontosPlacar: palpites.filter(p => p.usuarioId == uid && p.pontos === 3).length,
-      pontosResultado: palpites.filter(p => p.usuarioId == uid && p.pontos === 1).length
+      pontosPlacar: palpitesDoUsuario.filter(p => p.pontos === 3).length,
+      pontosResultado: palpitesDoUsuario.filter(p => p.pontos === 1).length,
+      totalPalpites: palpitesDoUsuario.length
     };
-  }).sort((a, b) => b.pontos - a.pontos);
+  }).filter(r => r.totalPalpites > 0) // Só mostra quem tem palpites
+    .sort((a, b) => b.pontos - a.pontos);
   
   res.json(ranking);
-});
-
-app.listen(3333, () => {
-  console.log('🚀 Servidor rodando em http://localhost:3333');
-  console.log('📝 Admin: admin@palpitecopa.com / admin123');
 });
