@@ -5,6 +5,64 @@ const { PrismaClient } = require('@prisma/client');
 const app = express();
 const prisma = new PrismaClient();
 
+// Cria as tabelas automaticamente se não existirem
+async function initDatabase() {
+  try {
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS "Confronto" (
+        id SERIAL PRIMARY KEY,
+        "selecaoA" TEXT NOT NULL,
+        "selecaoB" TEXT NOT NULL,
+        "dataHora" TIMESTAMP NOT NULL,
+        local TEXT NOT NULL,
+        "valorSugerido" DOUBLE PRECISION NOT NULL,
+        "golsTimeA" INTEGER,
+        "golsTimeB" INTEGER,
+        status TEXT DEFAULT 'ABERTO',
+        "palpitesAbertos" BOOLEAN DEFAULT true,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      );
+    `;
+    
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS "Usuario" (
+        id SERIAL PRIMARY KEY,
+        nome TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        senha TEXT NOT NULL,
+        cpf TEXT UNIQUE NOT NULL,
+        telefone TEXT NOT NULL,
+        "tipoChavePix" TEXT NOT NULL,
+        "chavePix" TEXT NOT NULL,
+        role TEXT DEFAULT 'USER',
+        ativo BOOLEAN DEFAULT true,
+        "createdAt" TIMESTAMP DEFAULT NOW(),
+        "updatedAt" TIMESTAMP DEFAULT NOW()
+      );
+    `;
+    
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS "Palpite" (
+        id SERIAL PRIMARY KEY,
+        "usuarioId" INTEGER NOT NULL,
+        "confrontoId" INTEGER NOT NULL,
+        "golsTimeA" INTEGER NOT NULL,
+        "golsTimeB" INTEGER NOT NULL,
+        pontos INTEGER DEFAULT 0,
+        "createdAt" TIMESTAMP DEFAULT NOW()
+      );
+    `;
+    
+    console.log('✅ Banco de dados inicializado');
+  } catch (error) {
+    console.error('Erro ao criar tabelas:', error.message);
+  }
+}
+
+// Chama a função antes de iniciar o servidor
+initDatabase();
+
 app.use(cors());
 app.use(express.json());
 
