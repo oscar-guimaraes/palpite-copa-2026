@@ -325,7 +325,12 @@
       body: JSON.stringify({ email: document.getElementById('email').value, senha: document.getElementById('senha').value })
     });
     const data = await res.json();
-    if (data.success) { usuario = data.usuario; await carregarDados(); renderizarPrincipal(); }
+    if (data.success) {
+      usuario = data.usuario;
+      localStorage.setItem('usuario', JSON.stringify(usuario));
+      await carregarDados();
+      renderizarPrincipal();
+}
     else alert('Email ou senha inválidos');
   }
 
